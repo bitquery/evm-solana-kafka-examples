@@ -24,6 +24,13 @@ impl ChainEncoding {
     }
 }
 
+/// Format EVM block number (big-endian bytes from proto) as decimal string.
+/// Empty yields "0". Used when filter blocks need block number.
+#[allow(dead_code)]
+pub fn format_block_number_be(bytes: &[u8]) -> String {
+    format!("{}", bytes.iter().fold(0u64, |n, &b| n << 8 | b as u64))
+}
+
 /// Format raw bytes for display using the chain's convention.
 /// O(n) in the length of `bytes`; one allocation for the result.
 pub fn format_bytes(bytes: &[u8], encoding: ChainEncoding) -> String {

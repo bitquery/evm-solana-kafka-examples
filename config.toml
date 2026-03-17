@@ -1,15 +1,16 @@
+
 # Which chain to consume: "solana" | "base" | "ethereum" | "bsc" | "tron"
 # EVM chains (base, ethereum, bsc) and Tron use the same EVM proto schema and hex encoding
 chain = "solana"
 
 [solana]
 username = "solana_103"
-password = "yyyy"
-topic = "solana.dextrades.proto"
+password = "YYC..."
+topic = "solana.transactions.proto"
 
-#[base]
+# [base]
 # username = "base_2"
-# password = "yyy"
+# password = "LEN..."
 # topic = "base.dextrades.proto"
 
 # Uncomment and set to consume EVM chains (same proto schema as base):
@@ -17,11 +18,11 @@ topic = "solana.dextrades.proto"
 # username = "eth_xxx"
 # password = "xxx"
 # topic = "ethereum.dextrades.proto"
-#
+
 # [bsc]
-# username = "bsc_xxx"
-# password = "xxx"
-# topic = "bsc.dextrades.proto"
+# username = "bsc_104"
+# password = "WpMNDhyMXJUKOz20rppMlcvD4HzJqb"
+# topic = "bsc.transactions.proto"
 #
 # [tron]
 # username = "tron_xxx"

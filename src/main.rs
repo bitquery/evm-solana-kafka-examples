@@ -1,4 +1,5 @@
 mod encoding;
+mod filters;
 mod protos;
 
 use rdkafka::config::ClientConfig;
@@ -7,9 +8,18 @@ use rdkafka::message::Message;
 use rdkafka::error::KafkaResult;
 use tokio::time::{timeout, Duration};
 use prost::Message as ProstMessage;
-use crate::encoding::{ChainEncoding, format_bytes};
-use crate::protos::solana::DexParsedBlockMessage;
-use crate::protos::evm::evm_messages::DexBlockMessage as EvmDexBlockMessage;
+use crate::encoding::ChainEncoding;
+use crate::protos::solana::{
+    BlockMessage as SolanaBlockMessage,
+    DexParsedBlockMessage as SolanaDexParsedBlockMessage,
+    ParsedIdlBlockMessage as SolanaParsedIdlBlockMessage,
+    TokenBlockMessage as SolanaTokenBlockMessage,
+};
+use crate::protos::evm::evm_messages::{
+    DexBlockMessage as EvmDexBlockMessage,
+    ParsedAbiBlockMessage as EvmParsedAbiBlockMessage,
+    TokenBlockMessage as EvmTokenBlockMessage,
+};
 use config::Config;
 use serde::Deserialize;
 
@@ -25,7 +35,8 @@ struct AuthConfig {
 struct Settings {
     /// Which chain to consume: "solana" | "base" | "ethereum" | "bsc" | "tron"
     chain: String,
-    solana: AuthConfig,
+    #[serde(default)]
+    solana: Option<AuthConfig>,
     #[serde(default)]
     base: Option<AuthConfig>,
     #[serde(default)]
@@ -38,7 +49,7 @@ struct Settings {
 
 fn get_auth_for_chain(settings: &Settings) -> Result<&AuthConfig, String> {
     match settings.chain.to_lowercase().as_str() {
-        "solana" => Ok(&settings.solana),
+        "solana" => settings.solana.as_ref().ok_or_else(|| format!("config: [solana] not set for chain={}", settings.chain)),
         "base" => settings.base.as_ref().ok_or_else(|| format!("config: [base] not set for chain={}", settings.chain)),
         "ethereum" => settings.ethereum.as_ref().ok_or_else(|| format!("config: [ethereum] not set for chain={}", settings.chain)),
         "bsc" => settings.bsc.as_ref().ok_or_else(|| format!("config: [bsc] not set for chain={}", settings.chain)),
@@ -91,70 +102,27 @@ async fn main() -> KafkaResult<()> {
                 Ok(msg) => {
                     if let Some(payload) = msg.payload() {
                         if is_evm {
-                            match EvmDexBlockMessage::decode(payload) {
-                                Ok(block) => {
-                                    if let Some(header) = &block.header {
-                                        println!("Block: number={:?}, hash={}", header.number, format_bytes(&header.hash, encoding));
-                                    }
-                                    for trade in &block.trades {
-                                        println!("--- EVM Trade ---");
-                                        println!("  TxIndex: {}", trade.transaction_index);
-                                        println!("  Success: {}", trade.success);
-
-                                        // ----- Set of conditions A: uncomment for token creation on xyz -----
-                                        // if evm: e.g. trade.dex.protocol_name == "xyz" or first-seen Currency.SmartContract
-                                        // if let Some(ref dex) = trade.dex {
-                                        //     if dex.protocol_name == "xyz" { ... }
-                                        // }
-                                        // if /* condition A */ {
-                                        //     println!("Token creation: tx_index={}", trade.transaction_index);
-                                        // }
-
-                                        // ----- Set of conditions B: uncomment for migration of abcd -----
-                                        // if evm: e.g. protocol or contract == abcd
-                                        // if let Some(ref dex) = trade.dex {
-                                        //     if dex.protocol_name == "abcd" { ... }
-                                        // }
-                                        // if /* condition B */ {
-                                        //     println!("Migration: tx_index={}", trade.transaction_index);
-                                        // }
-                                    }
-                                }
-                                Err(e) => eprintln!("Failed to decode EVM DexBlockMessage: {}", e),
+                            if let Ok(block) = EvmParsedAbiBlockMessage::decode(payload) {
+                                filters::evm_parsed_abi(&block, encoding, &settings.chain);
+                            } else if let Ok(block) = EvmDexBlockMessage::decode(payload) {
+                                filters::evm_dex(&block, encoding);
+                            } else if let Ok(block) = EvmTokenBlockMessage::decode(payload) {
+                                filters::evm_token(&block, encoding);
+                            } else {
+                                eprintln!("Failed to decode EVM message (tried ParsedAbiBlockMessage, DexBlockMessage, TokenBlockMessage)");
                             }
                         } else {
-                            match DexParsedBlockMessage::decode(payload) {
-                                Ok(parsed_block) => {
-                                    if let Some(header) = &parsed_block.header {
-                                        println!("Block: slot={:?}, timestamp={:?}",
-                                            header.slot, header.timestamp);
-                                    }
-                                    for dex_tx in &parsed_block.transactions {
-                                        println!("--- Transaction ---");
-                                        println!("  Index: {}", dex_tx.index);
-                                        println!("  Signature: {}", format_bytes(&dex_tx.signature, encoding));
-                                        if let Some(status) = &dex_tx.status {
-                                            println!("  Status: success={}", status.success);
-                                        }
-
-                                        // ----- Set of conditions A: uncomment for token creation on xyz -----
-                                        // if solana: e.g. tx has new Currency / mint, or program == xyz
-                                        // if let Some(ref header) = dex_tx.header {
-                                        //     if header.accounts.iter().any(|a| ...) { ... }
-                                        // }
-                                        // if /* condition A */ {
-                                        //     println!("Token creation: index={}, sig={}", dex_tx.index, format_bytes(&dex_tx.signature, encoding));
-                                        // }
-
-                                        // ----- Set of conditions B: uncomment for migration of abcd -----
-                                        // if solana: e.g. pool / program == abcd
-                                        // for pool_ev in &dex_tx.pool_events { ... }
-                                        // if /* condition B */ {
-                                        //     println!("Migration: index={}, sig={}", dex_tx.index, format_bytes(&dex_tx.signature, encoding));
-                                        // }
-                                    }
-                                }
-                                Err(e) => eprintln!("Failed to decode DexParsedBlockMessage: {}", e),
+                            // Solana: try all message types (dex, token, parsed_idl, block)
+                            if let Ok(block) = SolanaDexParsedBlockMessage::decode(payload) {
+                                filters::solana_dex(&block, encoding);
+                            } else if let Ok(block) = SolanaTokenBlockMessage::decode(payload) {
+                                filters::solana_token(&block, encoding);
+                            } else if let Ok(block) = SolanaParsedIdlBlockMessage::decode(payload) {
+                                filters::solana_parsed_idl(&block, encoding);
+                            } else if let Ok(block) = SolanaBlockMessage::decode(payload) {
+                                filters::solana_block(&block, encoding);
+                            } else {
+                                eprintln!("Failed to decode Solana message (tried DexParsedBlockMessage, TokenBlockMessage, ParsedIdlBlockMessage, BlockMessage)");
                             }
                         }
                     }
