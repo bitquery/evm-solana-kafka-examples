@@ -1,0 +1,143 @@
+syntax = "proto3";
+package evm_messages;
+
+import "evm/block_message.proto";
+import "evm/dex_block_message.proto";
+import "evm/token_block_message.proto";
+
+message PredictionMarketBlockMessage {
+  Chain Chain = 1;
+  BlockHeader Header = 2;
+  optional BlockHeader L1Header = 3;
+
+  repeated PredictionTradeEvent TradeEvents = 4;
+  repeated PredictionManagementEvent ManagementEvents = 5;
+  repeated PredictionSettlementEvent SettlementEvents = 6;
+}
+
+message PredictionMarketplaceInfo {
+  bytes SmartContract = 1;      // marketplace contract address, UMA Adapter for polymarket: 0x65070BE91477460D8A7AeEb94ef92fe056C2f2A7
+
+  string ProtocolName = 2;      // "Polymarket", "predict.fun"
+  string ProtocolFamily = 3;    // "Gnosis_CTF"
+  string ProtocolVersion = 4;
+
+  bool Delegated = 5;
+  bytes DelegatedTo = 6;
+}
+
+// https://gamma-api.polymarket.com/events?order=id&ascending=false&closed=false&limit=10&offset=0
+// 1 EVENT owns multiple questions, QUESTION owns usually 1 condition and connected to 1 MARKET
+// 1 CONDITION owns usually multiple OUTCOME TOKENS (for now is 2)
+
+// Created / Resolved
+message PredictionManagementEvent {
+  TransactionHeader TransactionHeader = 1;
+  Signature TransactionSignature = 2;
+
+  PredictionEvent Event = 3;
+  PredictionInfo Prediction = 4;
+  string Description = 5;
+
+  uint64 TransactionIndex = 6;
+
+  GroupInfo Group = 7;
+
+}
+
+message GroupInfo {
+  bytes Id = 1;
+  string Title = 2;
+  string Description = 3;
+}
+
+message PredictionSettlementEvent {
+
+  TransactionHeader TransactionHeader = 1;
+  Signature TransactionSignature = 2;
+  PredictionEvent Event = 3;
+  PredictionInfo Prediction = 4;
+
+  repeated int32 IndexSets = 5; // indexes of Outcome tokens for split/merge in ConditionInfo, e.g. [0] for "Yes", [1] for "No", [0, 1] for split into both "Yes" and "No"
+
+  bytes Holder = 6;
+  OutcomeSettlement Amounts = 7; // for split: amount of received outcome tokens and paid collateral, for merge: amount of paid outcome tokens and received collateral, for redemption: amount of paid outcome tokens and received collateral
+
+  uint64 TransactionIndex = 8;
+}
+
+message OutcomeSettlement {
+  bytes Amount = 1;
+  bytes CollateralAmount = 2;
+}
+
+
+message PredictionTradeEvent {
+  TransactionHeader TransactionHeader = 1;
+  Signature TransactionSignature = 2;
+
+  PredictionEvent Event = 3;
+  PredictionInfo Prediction = 4;
+
+  OutcomeTrade OutcomeTrade = 5;
+
+  uint64 TransactionIndex = 6;
+}
+
+message OutcomeTrade {
+  bytes Seller = 1; // maker in Polymarket
+  bytes Buyer = 2; // taker in Polymarket
+
+  bytes Amount = 3; // amount of Option tokens
+  bytes CollateralAmount = 4; // amount of paid collaterals ( USDC )
+
+  bool IsOutcomeBuy = 5; // true if Buyer takes Outcome token for Colleteral
+
+  TradeFee Fee = 6;
+  bytes OrderId = 7;
+}
+
+message PredictionInfo {
+  PredictionMarketplaceInfo Marketplace = 1;
+  QuestionInfo Question = 2;
+  ConditionInfo Condition = 3;
+  optional OutcomeInfo Outcome = 4;
+
+  optional TokenInfo OutcomeToken = 5; // traded outcome token for TRADE event || outcome token for RESOLVED event (empty if no winner)
+  optional TokenInfo CollateralToken = 6; // USDC
+}
+
+message PredictionEvent {
+  bytes  SmartContract = 1;
+  uint64 CallIndex = 2;
+  uint64 LogIndex = 3;
+  string Type = 4;
+}
+
+message QuestionInfo {
+  bytes Id = 1;    // question id, "0x78784dce991b76362f0409fc26e2a16aa0e520da3d47d4389bc55580850ff4d6" for polymarket
+  string MarketId = 2;  // https://gamma-api.polymarket.com/markets/{market_id} to get all the data
+
+  string Title = 3;
+  uint64 CreatedAt = 4;
+
+
+  string ResolutionSource = 5; // "https://data.chain.link/streams/eth-usd",
+  string Image = 6; // https://polymarket-upload.s3.us-east-2.amazonaws.com/ETH+fullsize.jpg
+
+  bytes GroupId = 7;
+}
+
+message ConditionInfo {
+  bytes Id = 1;           // condition id, "0x03a8a2d4ca694f0cfe9b700ed745a41694dfcfa40110ef68d08bf0d077f98acb" for polymarket
+  bytes QuestionId = 2;
+  repeated OutcomeInfo Outcomes = 3;
+
+  bytes Oracle = 4;
+}
+
+message OutcomeInfo {
+  optional bytes Id = 1;  // ERC1155 token ID for outcome token or other id: 30047082238364305580334875801842609424049121375805509630177240923852213311546
+  uint32 Index = 2;       // index in ConditionInfo (0, 1...)
+  string Label = 3;       // for outcome: Yes, No, etc
+}
