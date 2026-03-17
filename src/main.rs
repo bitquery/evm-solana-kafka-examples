@@ -100,6 +100,24 @@ async fn main() -> KafkaResult<()> {
                                         println!("--- EVM Trade ---");
                                         println!("  TxIndex: {}", trade.transaction_index);
                                         println!("  Success: {}", trade.success);
+
+                                        // ----- Set of conditions A: uncomment for token creation on xyz -----
+                                        // if evm: e.g. trade.dex.protocol_name == "xyz" or first-seen Currency.SmartContract
+                                        // if let Some(ref dex) = trade.dex {
+                                        //     if dex.protocol_name == "xyz" { ... }
+                                        // }
+                                        // if /* condition A */ {
+                                        //     println!("Token creation: tx_index={}", trade.transaction_index);
+                                        // }
+
+                                        // ----- Set of conditions B: uncomment for migration of abcd -----
+                                        // if evm: e.g. protocol or contract == abcd
+                                        // if let Some(ref dex) = trade.dex {
+                                        //     if dex.protocol_name == "abcd" { ... }
+                                        // }
+                                        // if /* condition B */ {
+                                        //     println!("Migration: tx_index={}", trade.transaction_index);
+                                        // }
                                     }
                                 }
                                 Err(e) => eprintln!("Failed to decode EVM DexBlockMessage: {}", e),
@@ -118,6 +136,22 @@ async fn main() -> KafkaResult<()> {
                                         if let Some(status) = &dex_tx.status {
                                             println!("  Status: success={}", status.success);
                                         }
+
+                                        // ----- Set of conditions A: uncomment for token creation on xyz -----
+                                        // if solana: e.g. tx has new Currency / mint, or program == xyz
+                                        // if let Some(ref header) = dex_tx.header {
+                                        //     if header.accounts.iter().any(|a| ...) { ... }
+                                        // }
+                                        // if /* condition A */ {
+                                        //     println!("Token creation: index={}, sig={}", dex_tx.index, format_bytes(&dex_tx.signature, encoding));
+                                        // }
+
+                                        // ----- Set of conditions B: uncomment for migration of abcd -----
+                                        // if solana: e.g. pool / program == abcd
+                                        // for pool_ev in &dex_tx.pool_events { ... }
+                                        // if /* condition B */ {
+                                        //     println!("Migration: index={}, sig={}", dex_tx.index, format_bytes(&dex_tx.signature, encoding));
+                                        // }
                                     }
                                 }
                                 Err(e) => eprintln!("Failed to decode DexParsedBlockMessage: {}", e),
