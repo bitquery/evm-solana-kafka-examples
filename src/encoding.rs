@@ -31,14 +31,44 @@ pub fn format_block_number_be(bytes: &[u8]) -> String {
     format!("{}", bytes.iter().fold(0u64, |n, &b| n << 8 | b as u64))
 }
 
+const HEX_CHARS: [u8; 16] = *b"0123456789abcdef";
+
+fn encode_hex(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(2 + bytes.len() * 2);
+    s.push('0');
+    s.push('x');
+    for &b in bytes {
+        s.push(HEX_CHARS[(b >> 4) as usize] as char);
+        s.push(HEX_CHARS[(b & 0xf) as usize] as char);
+    }
+    s
+}
+
 /// Format raw bytes for display using the chain's convention.
 /// O(n) in the length of `bytes`; one allocation for the result.
 pub fn format_bytes(bytes: &[u8], encoding: ChainEncoding) -> String {
     match encoding {
         ChainEncoding::Solana => bs58::encode(bytes).into_string(),
+        ChainEncoding::Evm | ChainEncoding::Tron => encode_hex(bytes),
+    }
+}
+
+/// Write formatted bytes into `buf` and return `buf` as &str. Reusing `buf` avoids per-call allocation for EVM hex.
+pub fn format_bytes_into<'a>(bytes: &[u8], encoding: ChainEncoding, buf: &'a mut String) -> &'a str {
+    buf.clear();
+    match encoding {
+        ChainEncoding::Solana => {
+            buf.push_str(&bs58::encode(bytes).into_string());
+        }
         ChainEncoding::Evm | ChainEncoding::Tron => {
-            let hex: String = bytes.iter().map(|b| format!("{:02x}", b)).collect();
-            format!("0x{}", hex)
+            buf.reserve(2 + bytes.len() * 2);
+            buf.push('0');
+            buf.push('x');
+            for &b in bytes {
+                buf.push(HEX_CHARS[(b >> 4) as usize] as char);
+                buf.push(HEX_CHARS[(b & 0xf) as usize] as char);
+            }
         }
     }
+    buf.as_str()
 }
