@@ -144,14 +144,8 @@ pub fn evm_token(block: &EvmTokenBlockMessage, _encoding: ChainEncoding) {
     #[allow(unused_variables)]
     for transfer in &block.transfers {
         // Print details only when the transfer matches the criteria below.
-        // ----- Set of conditions A: uncomment for token creation on xyz -----
-        // if transfer.Currency is first-seen or protocol_name == "xyz" { ... }
-        // if /* condition A */ {
-        //     println!("--- EVM Token (token creation) ---");
-        //     println!("  TxIndex: {}", transfer.transaction_index);
-        //     println!("  Sender: {}", format_bytes(&transfer.sender, encoding));
-        //     println!("  Receiver: {}", format_bytes(&transfer.receiver, encoding));
-        // }
+        // ----- Set of conditions A-----
+        
     }
 }
 
@@ -160,19 +154,8 @@ pub fn solana_dex(block: &SolanaDexParsedBlockMessage, _encoding: ChainEncoding)
     #[allow(unused_variables)]
     for dex_tx in &block.transactions {
         // Print details only when the transaction matches the criteria below.
-        // ----- Set of conditions A: uncomment for token creation on xyz -----
-        // if solana: e.g. tx has new Currency / mint, or program == xyz
-        // if let Some(ref header) = dex_tx.header {
-        //     if header.accounts.iter().any(|a| ...) { ... }
-        // }
-        // if /* condition A */ {
-        //     println!("--- Transaction (token creation) ---");
-        //     println!("  Index: {}", dex_tx.index);
-        //     println!("  Signature: {}", format_bytes(&dex_tx.signature, encoding));
-        //     if let Some(status) = &dex_tx.status {
-        //         println!("  Status: success={}", status.success);
-        //     }
-        // }
+        // ----- Set of conditions A:-----
+       
 
     
     }
@@ -182,8 +165,8 @@ pub fn solana_dex(block: &SolanaDexParsedBlockMessage, _encoding: ChainEncoding)
 pub fn solana_token(block: &SolanaTokenBlockMessage, _encoding: ChainEncoding) {
     #[allow(unused_variables)]
     for _tx in &block.transactions {
-        // ----- Set of conditions A: uncomment for token creation on xyz -----
-        // ----- Set of conditions B: uncomment for migration of abcd -----
+        // ----- Set of conditions A:  -----
+        // ----- Set of conditions B: -----
     }
 }
 
