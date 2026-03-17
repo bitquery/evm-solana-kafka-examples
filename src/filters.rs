@@ -2,7 +2,6 @@
 //! Main.rs only does decode dispatch; this module holds all condition checks and output.
 
 use std::sync::OnceLock;
-use chrono::Local;
 use crate::encoding::{format_bytes, format_bytes_into, ChainEncoding};
 use crate::protos::evm::evm_messages::{
     DexBlockMessage as EvmDexBlockMessage,
